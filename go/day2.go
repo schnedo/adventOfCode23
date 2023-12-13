@@ -18,6 +18,10 @@ func (c *colorset) String() string {
 	return "{red: " + strconv.Itoa(c.red) + ", blue: " + strconv.Itoa(c.blue) + ", green: " + strconv.Itoa(c.green) + "}"
 }
 
+func (c *colorset) isMoreThan(other *colorset) bool {
+	return c.blue > other.blue || c.green > other.green || c.red > other.red
+}
+
 type game struct {
 	id   int
 	sets []colorset
@@ -32,6 +36,15 @@ func (g *game) String() string {
 		}
 	}
 	return "{" + strconv.Itoa(g.id) + " [" + colorsets + "]}"
+}
+
+func (g *game) isPossibleWith(bag *colorset) bool {
+	for _, set := range g.sets {
+		if set.isMoreThan(bag) {
+			return false
+		}
+	}
+	return true
 }
 
 func parseColorset(line string) colorset {
@@ -76,10 +89,17 @@ func main() {
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
 
+	bag := &colorset{red: 12, green: 13, blue: 14}
+
+	sum := 0
 	for scanner.Scan() {
 		game := parseGame(scanner.Text())
-		fmt.Println(game)
+		if game.isPossibleWith(bag) {
+			sum += game.id
+		}
 	}
 
 	file.Close()
+
+	fmt.Println(sum)
 }
