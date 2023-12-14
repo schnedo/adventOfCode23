@@ -1,9 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
+	"myadvent/internal"
 	"strconv"
 	"strings"
 )
@@ -113,23 +112,19 @@ func parseGame(line string) *game {
 }
 
 func main() {
-	file, _ := os.Open("../inputs/day2")
-	scanner := bufio.NewScanner(file)
-	scanner.Split(bufio.ScanLines)
+	lines := internal.ReadLines("day2")
 
 	bag := &colorset{red: 12, green: 13, blue: 14}
 	sumOfPossibles := 0
 	sumOfEnclosingPowers := 0
 
-	for scanner.Scan() {
-		game := parseGame(scanner.Text())
+	for line := range lines {
+		game := parseGame(line)
 		if game.isPossibleWith(bag) {
 			sumOfPossibles += game.id
 		}
 		sumOfEnclosingPowers += enclosingSet(game.sets).power()
 	}
-
-	file.Close()
 
 	fmt.Println("sumOfPossibles: " + strconv.Itoa(sumOfPossibles))
 	fmt.Println("sumOfEnclosingPowers: " + strconv.Itoa(sumOfEnclosingPowers))
