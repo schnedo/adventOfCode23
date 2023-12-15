@@ -8,16 +8,53 @@ import (
 )
 
 func main() {
+	sum := 0
 	for rawLine := range internal.ReadLines("day4") {
 		card := parseCard(rawLine)
-		fmt.Println(card)
+		sum += card.points()
 	}
+	fmt.Println(sum)
 }
 
 type Card struct {
 	id             int
 	winningNumbers [10]int
 	myNumbers      [25]int
+}
+
+func (card Card) points() int {
+	nMyWinningNumbers := card.nMyWinningNumbers()
+	if nMyWinningNumbers == 0 {
+		return 0
+	}
+	points := 1
+	for i := 1; i < nMyWinningNumbers; i++ {
+		points *= 2
+	}
+	return points
+}
+
+func (card Card) myWinningNumbers() []int {
+	myWinningNumbers := []int{}
+	for _, num := range card.myNumbers {
+		if card.isWinningNumber(num) {
+			myWinningNumbers = append(myWinningNumbers, num)
+		}
+	}
+	return myWinningNumbers
+}
+
+func (card Card) nMyWinningNumbers() int {
+	return len(card.myWinningNumbers())
+}
+
+func (card Card) isWinningNumber(num int) bool {
+	for _, winning := range card.winningNumbers {
+		if num == winning {
+			return true
+		}
+	}
+	return false
 }
 
 var cardPattern = regexp.MustCompile("Card +(\\d+): +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) \\| +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+) +(\\d+)")
