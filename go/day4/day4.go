@@ -9,11 +9,44 @@ import (
 
 func main() {
 	sum := 0
+	copies := Copies{nCopies: []int{}}
+	nCards := 0
+
 	for rawLine := range internal.ReadLines("day4") {
 		card := parseCard(rawLine)
 		sum += card.points()
+
+		nCopies := copies.pop()
+		nCards += nCopies + 1
+		for i := 0; i <= nCopies; i++ {
+			copies.addNCopies(card.nMyWinningNumbers())
+		}
+
 	}
 	fmt.Println(sum)
+	fmt.Println(nCards)
+}
+
+type Copies struct {
+	nCopies []int
+}
+
+func (c *Copies) addNCopies(count int) {
+	for i := len(c.nCopies); i < count; i++ {
+		c.nCopies = append(c.nCopies, 0)
+	}
+	for i := 0; i < count; i++ {
+		c.nCopies[i]++
+	}
+}
+
+func (c *Copies) pop() int {
+	if len(c.nCopies) == 0 {
+		return 0
+	}
+	popped := c.nCopies[0]
+	c.nCopies = c.nCopies[1:]
+	return popped
 }
 
 type Card struct {
