@@ -12,7 +12,7 @@ func main() {
 	linesChannel := internal.ReadLines("day5")
 	seedsline := <-linesChannel
 	transformer := intsTransformer{}
-	transformer.current = matchSeeds(seedsline)
+	transformer.current = matchSeedRanges(seedsline)
 
 	for rawLine := range linesChannel {
 		if rawLine == "" {
@@ -66,6 +66,22 @@ func (it *intsTransformer) mapRange(r Range) {
 func matchSeeds(line string) []int {
 	lineSplit := strings.Split(line, " ")
 	return stringsToInts(lineSplit[1:])
+}
+
+func matchSeedRanges(line string) []int {
+	lineSplit := strings.Split(line, " ")
+	seeds := []int{}
+	rawSeeds := lineSplit[1:]
+	for i := range rawSeeds {
+		if i%2 == 0 {
+			rangeStart, _ := strconv.Atoi(rawSeeds[i])
+			rangeLength, _ := strconv.Atoi(rawSeeds[i+1])
+			for i := rangeStart; i <= rangeStart+rangeLength; i++ {
+				seeds = append(seeds, i)
+			}
+		}
+	}
+	return seeds
 }
 
 type Range struct {
