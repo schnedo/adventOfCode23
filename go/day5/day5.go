@@ -11,56 +11,50 @@ import (
 func main() {
 	linesChannel := internal.ReadLines("day5")
 	seedsline := <-linesChannel
-	transformer := intsTransformer{}
-	transformer.current = matchSeedRanges(seedsline)
+	<-linesChannel
+	<-linesChannel
+	seedMap := SeedMap{}
 
+	mapLayer := []Range{}
 	for rawLine := range linesChannel {
 		if rawLine == "" {
-			transformer.finishStep()
+			seedMap.rangeLayers = append(seedMap.rangeLayers, mapLayer)
 			<-linesChannel
 		} else {
-			rang := matchRange(rawLine)
-			transformer.mapRange(rang)
+			r := matchRange(rawLine)
+			mapLayer = append(mapLayer, r)
 		}
 	}
-	transformer.finishStep()
+	seedMap.rangeLayers = append(seedMap.rangeLayers, mapLayer)
 
-	fmt.Println(min(transformer.current))
-
-}
-
-func min(nums []int) int {
-	m := math.MaxInt
-	for _, num := range nums {
-		if num < m {
-			m = num
+	currentMin := math.MaxInt
+	for seed := range matchSeedRanges(seedsline) {
+		mappedSeed := seedMap.mapNum(seed)
+		if mappedSeed < currentMin {
+			currentMin = mappedSeed
 		}
 	}
-	return m
+
+	fmt.Println(currentMin)
+
 }
 
-type intsTransformer struct {
-	next    []int
-	current []int
+type SeedMap struct {
+	rangeLayers [][]Range
 }
 
-func (it *intsTransformer) finishStep() {
-	it.next = append(it.next, it.current...)
-	it.current = it.next
-	it.next = []int{}
-}
-
-func (it *intsTransformer) mapRange(r Range) {
-	notMapped := []int{}
-	for _, num := range it.current {
-		newNum, err := r.mapNum(num)
-		if err != nil {
-			notMapped = append(notMapped, num)
-		} else {
-			it.next = append(it.next, newNum)
+func (sm SeedMap) mapNum(num int) int {
+	mappedNumber := num
+	for _, layer := range sm.rangeLayers {
+		for _, r := range layer {
+			newNum, err := r.mapNum(mappedNumber)
+			if err != nil {
+				mappedNumber = newNum
+				break
+			}
 		}
 	}
-	it.current = notMapped
+	return mappedNumber
 }
 
 func matchSeeds(line string) []int {
@@ -68,20 +62,24 @@ func matchSeeds(line string) []int {
 	return stringsToInts(lineSplit[1:])
 }
 
-func matchSeedRanges(line string) []int {
+func seedRanges(line string, c chan int) {
 	lineSplit := strings.Split(line, " ")
-	seeds := []int{}
 	rawSeeds := lineSplit[1:]
 	for i := range rawSeeds {
 		if i%2 == 0 {
 			rangeStart, _ := strconv.Atoi(rawSeeds[i])
 			rangeLength, _ := strconv.Atoi(rawSeeds[i+1])
 			for i := rangeStart; i <= rangeStart+rangeLength; i++ {
-				seeds = append(seeds, i)
+				c <- i
 			}
 		}
 	}
-	return seeds
+}
+
+func matchSeedRanges(line string) chan int {
+	seedChannel := make(chan int)
+	go seedRanges(line, seedChannel)
+	return seedChannel
 }
 
 type Range struct {
@@ -101,7 +99,7 @@ func (r RangeMapError) Error() string {
 }
 
 func (r Range) mapNum(num int) (int, error) {
-	if num < r.sourceStart || r.sourceEnd < num {
+	if num < r.sourceStart || r.sourceEnd <= num {
 		return 0, RangeMapError{
 			num:         num,
 			sourceStart: r.sourceStart,
