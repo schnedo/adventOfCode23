@@ -44,4 +44,16 @@ func main() {
 	}
 	fmt.Println(mul)
 
+	race := Race{
+		time:     48938466,
+		distance: 261119210191063,
+	}
+	nWaysToWin := 0
+	for i := 1; i < race.time; i++ {
+		if i*(race.time-i) > race.distance {
+			nWaysToWin++
+		}
+	}
+	fmt.Println(nWaysToWin)
+
 }
