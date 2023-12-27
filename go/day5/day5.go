@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"myadvent/internal"
 	"strconv"
 	"strings"
@@ -10,7 +11,10 @@ import (
 func main() {
 	linesChannel := internal.ReadLines("day5")
 	seedsline := <-linesChannel
+
+	// seedRanges := matchSeedRangesPartOne(seedsline)
 	seedRanges := matchSeedRanges(seedsline)
+
 	<-linesChannel
 	<-linesChannel
 	seedMap := SeedMap{}
@@ -19,6 +23,7 @@ func main() {
 	for rawLine := range linesChannel {
 		if rawLine == "" {
 			seedMap.rangeLayers = append(seedMap.rangeLayers, mapLayer)
+			mapLayer = []Range{}
 			<-linesChannel
 		} else {
 			r := matchRange(rawLine)
@@ -27,11 +32,16 @@ func main() {
 	}
 	seedMap.rangeLayers = append(seedMap.rangeLayers, mapLayer)
 
-	currentMin := 0
-	for ; !seedRanges.includes(seedMap.inverseMapNum(currentMin)); currentMin++ {
+	mappedRanges := seedMap.applyTo(seedRanges)
+
+	currentMinLocation := math.MaxInt
+	for _, r := range mappedRanges {
+		if r.start < currentMinLocation {
+			currentMinLocation = r.start
+		}
 	}
 
-	fmt.Println(currentMin)
+	fmt.Println(currentMinLocation)
 
 }
 
@@ -39,12 +49,27 @@ type SeedMap struct {
 	rangeLayers [][]Range
 }
 
-func (sm SeedMap) mapNum(num int) int {
-	mappedNumber := num
+func (sm SeedMap) applyTo(ranges []SeedRange) []SeedRange {
+	var mapped []SeedRange
+	notYetMapped := ranges
 	for _, layer := range sm.rangeLayers {
+		mapped = []SeedRange{}
 		for _, r := range layer {
-			newNum, err := r.mapNum(mappedNumber)
-			if err != nil {
+			singleMapped, singleUnmapped := r.applyToRanges(notYetMapped)
+			mapped = append(mapped, singleMapped...)
+			notYetMapped = singleUnmapped
+		}
+		notYetMapped = append(notYetMapped, mapped...)
+	}
+	return notYetMapped
+}
+
+func (sm SeedMap) inverseMapNum(num int) int {
+	mappedNumber := num
+	for i := len(sm.rangeLayers) - 1; i >= 0; i-- {
+		for _, r := range sm.rangeLayers[i] {
+			newNum, err := r.inverseMapNum(mappedNumber)
+			if err == nil {
 				mappedNumber = newNum
 				break
 			}
@@ -53,12 +78,12 @@ func (sm SeedMap) mapNum(num int) int {
 	return mappedNumber
 }
 
-func (sm SeedMap) inverseMapNum(num int) int {
+func (sm SeedMap) mapNum(num int) int {
 	mappedNumber := num
-	for i := len(sm.rangeLayers) - 1; i >= 0; i-- {
-		for _, r := range sm.rangeLayers[i] {
-			newNum, err := r.inverseMapNum(mappedNumber)
-			if err != nil {
+	for _, layer := range sm.rangeLayers {
+		for _, r := range layer {
+			newNum, err := r.mapNum(mappedNumber)
+			if err == nil {
 				mappedNumber = newNum
 				break
 			}
@@ -72,19 +97,6 @@ func matchSeeds(line string) []int {
 	return stringsToInts(lineSplit[1:])
 }
 
-type SeedRanges struct {
-	ranges []SeedRange
-}
-
-func (sr SeedRanges) includes(num int) bool {
-	for _, r := range sr.ranges {
-		if r.includes(num) {
-			return true
-		}
-	}
-	return false
-}
-
 type SeedRange struct {
 	start int
 	end   int
@@ -94,7 +106,23 @@ func (sr SeedRange) includes(num int) bool {
 	return sr.start <= num && num < sr.end
 }
 
-func matchSeedRanges(line string) SeedRanges {
+func matchSeedRangesPartOne(line string) []SeedRange {
+	lineSplit := strings.Split(line, " ")
+	rawSeeds := lineSplit[1:]
+	seedRanges := []SeedRange{}
+
+	for _, rawSeed := range rawSeeds {
+		start, _ := strconv.Atoi(rawSeed)
+		seedRanges = append(seedRanges, SeedRange{
+			start: start,
+			end:   start + 1,
+		})
+	}
+
+	return seedRanges
+}
+
+func matchSeedRanges(line string) []SeedRange {
 	lineSplit := strings.Split(line, " ")
 	rawSeeds := lineSplit[1:]
 	seedRanges := []SeedRange{}
@@ -106,7 +134,7 @@ func matchSeedRanges(line string) SeedRanges {
 			seedRanges = append(seedRanges, SeedRange{start: start, end: start + length})
 		}
 	}
-	return SeedRanges{ranges: seedRanges}
+	return seedRanges
 }
 
 type Range struct {
@@ -117,35 +145,71 @@ type Range struct {
 }
 
 type RangeMapError struct {
-	num   int
-	start int
-	end   int
+}
+
+func (r Range) applyToRanges(seedRanges []SeedRange) (mapped, unmapped []SeedRange) {
+	for _, seedRange := range seedRanges {
+		singleMapped, singleUnmapped := r.applyTo(seedRange)
+		mapped = append(mapped, singleMapped...)
+		unmapped = append(unmapped, singleUnmapped...)
+	}
+	return
+}
+
+func (r Range) applyTo(s SeedRange) (mapped, unmapped []SeedRange) {
+	if r.sourceEnd <= s.start || r.sourceStart >= s.end {
+		unmapped = append(unmapped, s)
+		return
+	}
+	var mappedStart, mappedEnd int
+	if r.sourceStart < s.start {
+		m, _ := r.mapNum(s.start)
+		mappedStart = m
+	} else {
+		mappedStart = r.destinationStart
+		if r.sourceStart > s.start {
+			unmapped = append(unmapped, SeedRange{
+				start: s.start,
+				end:   r.sourceStart,
+			})
+		}
+	}
+	if r.sourceEnd > s.end {
+		m, _ := r.mapNum(s.end)
+		mappedEnd = m
+	} else {
+		mappedEnd = r.destinationEnd
+		if r.sourceEnd < s.end {
+			unmapped = append(unmapped, SeedRange{
+				start: r.sourceEnd,
+				end:   s.end,
+			})
+		}
+	}
+
+	mapped = append(mapped, SeedRange{
+		start: mappedStart,
+		end:   mappedEnd,
+	})
+	return
 }
 
 func (r RangeMapError) Error() string {
-	return "Could not map " + strconv.Itoa(r.num) + ": Not in range " + strconv.Itoa(r.start) + " - " + strconv.Itoa(r.end)
-}
-
-func (r Range) mapNum(num int) (int, error) {
-	if num < r.sourceStart || r.sourceEnd <= num {
-		return 0, RangeMapError{
-			num:   num,
-			start: r.sourceStart,
-			end:   r.sourceEnd,
-		}
-	}
-	return num - r.sourceStart + r.destinationStart, nil
+	return "Could not map range"
 }
 
 func (r Range) inverseMapNum(num int) (int, error) {
 	if num < r.destinationStart || r.destinationEnd <= num {
-		return 0, RangeMapError{
-			num:   num,
-			start: r.destinationStart,
-			end:   r.destinationEnd,
-		}
+		return 0, RangeMapError{}
 	}
 	return num - r.destinationStart + r.sourceStart, nil
+}
+
+func (r Range) mapNum(num int) (int, error) {
+	if num < r.sourceStart || r.sourceEnd <= num {
+		return 0, RangeMapError{}
+	}
+	return num - r.sourceStart + r.destinationStart, nil
 }
 
 func matchRange(line string) Range {
