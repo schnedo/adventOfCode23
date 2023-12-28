@@ -12,19 +12,41 @@ func main() {
 	directions := parseDirections(directionsLine)
 	<-linesChannel
 
+	currentNodes := nodeList{}
 	network := Network{}
 	for line := range linesChannel {
 		baseNode, connectedNodes := parseNodeLine(line)
 		network[baseNode] = connectedNodes
+		if baseNode.endsWithA() {
+			currentNodes = append(currentNodes, baseNode)
+		}
 	}
 
 	nSteps := 0
-	currentNode := node("AAA")
-	for ; currentNode != node("ZZZ"); nSteps++ {
+	for ; !currentNodes.endAllWithZ(); nSteps++ {
 		direction := directions[nSteps%len(directions)]
-		currentNode = network[currentNode][direction]
+		nextNodes := nodeList{}
+		for _, currentNode := range currentNodes {
+			nextNodes = append(nextNodes, network[currentNode][direction])
+		}
+		currentNodes = nextNodes
 	}
 	fmt.Println(nSteps)
+}
+
+type nodeList []node
+
+func (nl nodeList) endAllWithZ() bool {
+	for _, n := range nl {
+		if !strings.HasSuffix(string(n), "Z") {
+			return false
+		}
+	}
+	return true
+}
+
+func (n node) endsWithA() bool {
+	return strings.HasSuffix(string(n), "A")
 }
 
 type node string
