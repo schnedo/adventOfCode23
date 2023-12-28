@@ -28,7 +28,8 @@ func main() {
 type Card int16
 
 const (
-	two Card = iota
+	joker Card = iota
+	two
 	three
 	four
 	five
@@ -37,7 +38,6 @@ const (
 	eight
 	nine
 	ten
-	jack
 	queen
 	king
 	ace
@@ -89,26 +89,53 @@ func getTypeOf(cards [5]Card) Type {
 	case 1:
 		return fiveOfAKind
 	case 5:
+		if counts[joker] == 1 {
+			return onePair
+		}
 		return highCard
 	case 4:
-		return onePair
+		switch counts[joker] {
+		case 0:
+			return onePair
+		default:
+			return threeOfAKind
+		}
 	case 3:
-		for _, count := range counts {
-			if count == 3 {
-				return threeOfAKind
+		switch counts[joker] {
+		case 0:
+			for _, count := range counts {
+				if count == 3 {
+					return threeOfAKind
+				}
+				if count == 2 {
+					return twoPair
+				}
 			}
-			if count == 2 {
-				return twoPair
+		case 1:
+			for _, count := range counts {
+				if count == 3 {
+					return fourOfAKind
+				}
+				if count == 2 {
+					return fullHouse
+				}
 			}
+		default:
+			return fourOfAKind
 		}
 		panic("type of hand with 3 different cards seems fishy")
 	case 2:
-		for _, count := range counts {
-			if count == 4 || count == 1 {
-				return fourOfAKind
-			} else {
-				return fullHouse
+		switch counts[joker] {
+		case 0:
+			for _, count := range counts {
+				if count == 4 || count == 1 {
+					return fourOfAKind
+				} else {
+					return fullHouse
+				}
 			}
+		default:
+			return fiveOfAKind
 		}
 	}
 	panic("impossible count of cards received")
@@ -135,7 +162,7 @@ func parseCard(label string) Card {
 	case "T":
 		return ten
 	case "J":
-		return jack
+		return joker
 	case "Q":
 		return queen
 	case "K":
