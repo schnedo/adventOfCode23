@@ -9,17 +9,20 @@ import (
 
 func main() {
 
-	sum := 0
+	sumOfRightValues := 0
+	sumOfLeftValues := 0
 	for line := range internal.ReadLines("day9") {
 		sequence := parseSequence(line)
-		nextValue := extrapolate(sequence)
-		sum += nextValue
+		nextLeftValue, nextRightValue := extrapolate(sequence)
+		sumOfRightValues += nextRightValue
+		sumOfLeftValues += nextLeftValue
 	}
-	fmt.Println(sum)
+	fmt.Println(sumOfRightValues)
+	fmt.Println(sumOfLeftValues)
 
 }
 
-func extrapolate(sequence []int) int {
+func extrapolate(sequence []int) (left, right int) {
 	sequences := [][]int{sequence}
 	for currentSequence := sequence; !isAllZeroes(currentSequence); currentSequence = sequences[len(sequences)-1] {
 		sequences = append(sequences, calcSequenceOfDiffs(currentSequence))
@@ -27,15 +30,20 @@ func extrapolate(sequence []int) int {
 
 	lastSequenceIndex := len(sequences) - 1
 
+	leftValues := []int{0}
+	j := 0
 	for i := lastSequenceIndex - 1; i >= 0; i-- {
 		previousSequence := sequences[i+1]
 		currentSequence := sequences[i]
-		nextValue := lastOf(currentSequence) + lastOf(previousSequence)
-		currentSequence = append(currentSequence, nextValue)
+		rightValue := lastOf(currentSequence) + lastOf(previousSequence)
+		leftValue := currentSequence[0] - leftValues[j]
+		leftValues = append(leftValues, leftValue)
+		currentSequence = append(currentSequence, rightValue)
 		sequences[i] = currentSequence
+		j++
 	}
 
-	return lastOf(sequences[0])
+	return lastOf(leftValues), lastOf(sequences[0])
 }
 
 func lastOf(sequence []int) int {
